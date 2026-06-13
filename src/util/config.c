@@ -18,7 +18,7 @@
  */
 int mkdir_p (const char * p_path)
 {
-    char   tmp[256] = {0};
+    char   tmp[256] = { 0 };
     char * p        = NULL;
 
     snprintf(tmp, sizeof(tmp), "%s", p_path);
@@ -54,11 +54,12 @@ char * get_config_path (const char * p_path)
 {
     const char * p_home      = getenv("HOME");
     const char * p_nova_path = "/.nova/";
-    char *       p_full_path = malloc(strlen(p_home) + strlen(p_nova_path) + strlen(p_path) + 1);
+    char *       p_full_path
+        = malloc(strlen(p_home) + strlen(p_nova_path) + strlen(p_path) + 1);
 
     sprintf(p_full_path, "%s%s%s", p_home, p_nova_path, p_path);
 
-    struct stat st = {0};
+    struct stat st = { 0 };
 
     if (stat(p_full_path, &st) == -1)
     {
@@ -71,12 +72,10 @@ char * get_config_path (const char * p_path)
     return p_full_path;
 }
 
-void init_configs()
+void init_configs ()
 {
-
 }
 
-void cleanup_configs()
+void cleanup_configs ()
 {
-
 }

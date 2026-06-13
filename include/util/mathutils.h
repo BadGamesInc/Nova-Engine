@@ -7,6 +7,11 @@
 
 #include <cglm.h>
 
-void create_transformation_matrix (mat4 dest, vec3 translation, vec3 rotation, vec3 scale);
+#define PI 3.14159
 
-#endif //NOVA_ENGINE_MATHUTILS_H
+void   create_transformation_matrix(mat4 dest,
+                                    vec3 translation,
+                                    vec3 rotation,
+                                    vec3 scale);
+
+#endif // NOVA_ENGINE_MATHUTILS_H

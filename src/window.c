@@ -7,7 +7,7 @@
 #define GLFW_INCLUDE_NONE
 #include <stdio.h>
 #include <stdlib.h>
-#include <util/novalogger.h>
+#include <util/nova_logger.h>
 #include <window.h>
 #include <engine.h>
 
@@ -16,12 +16,16 @@ void error_callback (int error, const char * description)
     fprintf(stderr, "Error: %s\n", description);
 }
 
-void keyboard_callback (GLFWwindow * window, int key, int scancode, int action, int mods)
+void keyboard_callback (
+    GLFWwindow * window, int key, int scancode, int action, int mods)
 {
     on_key(window, key, scancode, action, mods);
 }
 
-void mouse_button_callback (GLFWwindow * window, int button, int action, int mods)
+void mouse_button_callback (GLFWwindow * window,
+                            int          button,
+                            int          action,
+                            int          mods)
 {
     on_mouse_press(window, button, action, mods);
 }
@@ -41,12 +45,15 @@ void window_size_callback (GLFWwindow * window, int width, int height)
     on_resize(window, width, height);
 }
 
-GLFWwindow * create_window (const int32_t width, const int32_t height, const char * p_title)
+GLFWwindow * create_window (const int    width,
+                            const int    height,
+                            const char * p_title)
 {
     glfwSetErrorCallback(error_callback);
     glfwInitHint(GLFW_PLATFORM, GLFW_ANY_PLATFORM);
 
-    nova_info("Initializing GLFW %d.%d", GLFW_VERSION_MAJOR, GLFW_VERSION_MINOR);
+    nova_info(
+        "Initializing GLFW %d.%d", GLFW_VERSION_MAJOR, GLFW_VERSION_MINOR);
     if (!glfwInit())
     {
         exit(EXIT_FAILURE);
@@ -56,7 +63,8 @@ GLFWwindow * create_window (const int32_t width, const int32_t height, const cha
     glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
     glfwWindowHint(GLFW_DEPTH_BITS, 24);
 
-    GLFWwindow * p_window = glfwCreateWindow(width, height, p_title, NULL, NULL);
+    GLFWwindow * p_window
+        = glfwCreateWindow(width, height, p_title, NULL, NULL);
     if (!p_window)
     {
         glfwTerminate();

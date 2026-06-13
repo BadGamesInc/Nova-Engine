@@ -12,6 +12,7 @@ add_subdirectory(external/glfw)
 
 # -- ASSIMP (Added via git clone/submodule) -------------------------
 # Set these BEFORE add_subdirectory to keep your build clean
+set(ASSIMP_WARNINGS_AS_ERRORS OFF CACHE BOOL "" FORCE) # <-- FIX 1: Explicitly disable Assimp Werror
 set(ASSIMP_BUILD_ZLIB         ON CACHE BOOL "" FORCE)
 set(ASSIMP_BUILD_ASSIMP_TOOLS OFF CACHE BOOL "" FORCE)
 set(ASSIMP_BUILD_TESTS        OFF CACHE BOOL "" FORCE)
@@ -19,7 +20,7 @@ set(ASSIMP_INSTALL            OFF CACHE BOOL "" FORCE)
 set(BUILD_SHARED_LIBS         OFF CACHE BOOL "" FORCE)
 
 # Assuming you cloned it into external/assimp
-add_subdirectory(external/assimp)
+add_subdirectory(external/assimp SYSTEM) # <-- FIX 2: Added SYSTEM to suppress external warnings
 
 # -- GLAD -----------------------------------------------------------
 add_library(glad STATIC external/src/gl.c)
@@ -31,14 +32,14 @@ target_include_directories(glad PUBLIC
 # -- Your executable ------------------------------------------------
 add_executable(${PROJECT_NAME}
         src/main.c
-        src/util/novalogger.c
+        src/util/nova_logger.c
         src/util/config.c
         src/util/fileutils.c
         src/render/renderer.c
         src/render/shader.c
         src/render/model/model.c
-        src/render/model/resourceloader.c
-        include/render/model/resourceloader.h
+        src/render/model/resource_loader.c
+        include/render/model/resource_loader.h
         src/engine.c
         include/engine.h
         src/window.c
@@ -51,8 +52,24 @@ add_executable(${PROJECT_NAME}
         src/entity/entity.c
         include/entity/camera.h
         src/entity/camera.c
-        # Header files usually don't need to be in add_executable,
-        # but it doesn't hurt for IDE visibility.
+        include/entity/light.h
+        src/entity/light.c
+        src/render/entity_renderer.c
+        include/render/entity_renderer.h
+        src/util/containers.c
+        include/util/containers.h
+        include/render/asset_manager.h
+        src/render/asset_manager.c
+        include/terrain/terrain.h
+        src/terrain/terrain.c
+        include/render/terrain_renderer.h
+        src/render/terrain_renderer.c
+        include/util/input.h
+        src/util/input.c
+        src/util/colorutils.c
+        include/util/colorutils.h
+        src/entity/player_entity.c
+        include/entity/player_entity.h
 )
 
 # Use target_include_directories to tell your app where Assimp headers are

@@ -4,62 +4,72 @@
 
 #include <entity/entity.h>
 
-#include "util/novalogger.h"
+#include "util/nova_logger.h"
 
-Entity * create_entity(TexturedModel * p_model, vec3 rotation, vec3 scale, vec3 position)
+Entity * create_entity (LoadedModel *      p_model,
+                        vec3               rotation,
+                        vec3               scale,
+                        vec3               position,
+                        const unsigned int id)
 {
-    Entity * entity = malloc(sizeof(*entity));
+    Entity * p_entity = malloc(sizeof(*p_entity));
 
-    if (entity == NULL)
+    if (p_entity == NULL)
     {
         nova_error("Failed to create Entity");
         return NULL;
     }
 
-    glm_vec3_copy(rotation, entity->rotation);
-    glm_vec3_copy(scale, entity->scale);
-    glm_vec3_copy(position, entity->position);
-    entity->p_model = p_model;
+    glm_vec3_copy(rotation, p_entity->rotation);
+    glm_vec3_copy(scale, p_entity->scale);
+    glm_vec3_copy(position, p_entity->position);
+    p_entity->p_model = p_model;
+    p_entity->id      = id;
 
-    return entity;
+    return p_entity;
 }
 
-void get_position(Entity * p_entity, vec3 dest)
+void destroy_entity (void * p_entity)
+{
+    free(p_entity);
+}
+
+void entity_get_position (Entity * p_entity, vec3 dest)
 {
     glm_vec3_copy(p_entity->position, dest);
 }
 
-void set_position(Entity * p_entity, vec3 position)
+void entity_set_position (Entity * p_entity, vec3 position)
 {
     glm_vec3_copy(position, p_entity->position);
 }
 
-void get_scale(Entity * p_entity, vec3 dest)
+void entity_get_scale (Entity * p_entity, vec3 dest)
 {
     glm_vec3_copy(p_entity->scale, dest);
 }
 
-void set_scale(Entity * p_entity, vec3 scale)
+void entity_set_scale (Entity * p_entity, vec3 scale)
 {
     glm_vec3_copy(scale, p_entity->scale);
 }
 
-void get_rotation(Entity * p_entity, vec3 dest)
+void entity_get_rotation (Entity * p_entity, vec3 dest)
 {
     glm_vec3_copy(p_entity->rotation, dest);
 }
 
-void set_rotation(Entity * p_entity, vec3 rotation)
+void entity_set_rotation (Entity * p_entity, vec3 rotation)
 {
     glm_vec3_copy(rotation, p_entity->rotation);
 }
 
-void increase_position(Entity * p_entity, vec3 increase)
+void entity_increase_position (Entity * p_entity, vec3 increase)
 {
     glm_vec3_add(p_entity->position, increase, p_entity->position);
 }
 
-void increase_rotation(Entity * p_entity, vec3 increase)
+void entity_increase_rotation (Entity * p_entity, vec3 increase)
 {
     glm_vec3_add(p_entity->rotation, increase, p_entity->rotation);
 }

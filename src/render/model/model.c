@@ -3,7 +3,7 @@
 //
 
 #include <render/model/model.h>
-#include <util/novalogger.h>
+#include <util/nova_logger.h>
 #include <gl.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -14,7 +14,7 @@
  * @param vertex_count The amount of vertices the model has
  * @return The pointer to the newly created RawModel
  */
-RawModel * create_raw_model (const uint32_t vao_id, const int32_t vertex_count)
+RawModel * create_raw_model (const unsigned int vao_id, const int vertex_count)
 {
     RawModel * p_model = malloc(sizeof(*p_model));
 
@@ -24,7 +24,7 @@ RawModel * create_raw_model (const uint32_t vao_id, const int32_t vertex_count)
         return NULL;
     }
 
-    p_model->vao_id = vao_id;
+    p_model->vao_id       = vao_id;
     p_model->vertex_count = vertex_count;
 
     return p_model;
@@ -42,7 +42,7 @@ void destroy_raw_model (RawModel * p_model)
  * @param p_texture The texture to use
  * @return Pointer to the newly created ModelTexture
  */
-ModelTexture * create_model_texture (const Texture * p_texture)
+ModelTexture * create_model_texture (Texture * p_texture)
 {
     ModelTexture * p_model_texture = malloc(sizeof(*p_model_texture));
 
@@ -52,7 +52,14 @@ ModelTexture * create_model_texture (const Texture * p_texture)
         return NULL;
     }
 
-    p_model_texture->texture_id = p_texture->texture_id;
+    p_model_texture->texture          = *p_texture;
+    p_model_texture->texture_id       = p_texture->texture_id;
+    p_model_texture->shine_damper     = 1.0f;
+    p_model_texture->reflectivity     = 0.0f;
+    p_model_texture->has_transparency = false;
+    p_model_texture->use_fake_normals = false;
+
+    free(p_texture);
 
     return p_model_texture;
 }
@@ -68,9 +75,12 @@ void destroy_model_texture (ModelTexture * p_model_texture)
  * Create a model with a texture on it
  * @param p_model The model to use
  * @param p_texture The texture to use
+ * @param asset_id The unique number to identify this model
  * @return The pointer to the newly created TexturedModel
  */
-TexturedModel * create_textured_model (const RawModel * p_model, const ModelTexture * p_texture)
+TexturedModel * create_textured_model (RawModel *           p_model,
+                                       const ModelTexture * p_texture,
+                                       const unsigned int   asset_id)
 {
     TexturedModel * p_textured_model = malloc(sizeof(*p_textured_model));
 
@@ -81,7 +91,11 @@ TexturedModel * create_textured_model (const RawModel * p_model, const ModelText
     }
 
     p_textured_model->raw_model = *p_model;
-    p_textured_model->texture = *p_texture;
+    p_textured_model->texture   = *p_texture;
+    p_textured_model->asset_id  = malloc(sizeof(unsigned int));
+    *p_textured_model->asset_id = asset_id;
+
+    free(p_model);
 
     return p_textured_model;
 }

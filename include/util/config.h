@@ -6,7 +6,7 @@
 #define NOVA_ENGINE_CONFIG_H
 
 char * get_config_path(const char * p_path);
-void init_configs();
-void cleanup_configs();
+void   init_configs();
+void   cleanup_configs();
 
-#endif //NOVA_ENGINE_CONFIG_H
+#endif // NOVA_ENGINE_CONFIG_H

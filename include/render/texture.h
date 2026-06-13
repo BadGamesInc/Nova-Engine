@@ -5,24 +5,31 @@
 #ifndef NOVA_ENGINE_TEXTURE_H
 #define NOVA_ENGINE_TEXTURE_H
 
-#include <stdint.h>
+#include <cglm.h>
 
 typedef struct
 {
-    uint32_t width;
-    uint32_t height;
-    uint32_t texture_id;
+    int          width;
+    int          height;
+    unsigned int texture_id;
 } Texture;
 
-enum TextureType
+typedef struct
 {
-    JPG,
-    PNG
-};
+    int             width;
+    int             height;
+    int             channels;
+    unsigned char * data;
+} Image;
 
-Texture * create_texture(const char * p_texture_file_name, enum TextureType type);
+Texture * create_texture(const char * p_texture_file_name);
+Texture * create_texture_from_path(const char * p_absolute_path);
 void      destroy_texture(Texture * p_texture);
-void      bind_texture(const Texture * p_texture, uint32_t texture_unit);
+void      bind_texture(const Texture * p_texture, unsigned int texture_unit);
 void      unbind_texture(void);
+Image *   load_image(const char * p_image_file_name);
+void      destroy_image(Image * p_image);
+void      image_get_rgb(const Image * p_image, vec3 dest, int x, int y);
+void      image_get_rgba(const Image * p_image, vec4 dest, int x, int y);
 
-#endif //NOVA_ENGINE_TEXTURE_H
+#endif // NOVA_ENGINE_TEXTURE_H

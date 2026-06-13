@@ -1,0 +1,3 @@
+# fern.mtl
+newmtl fern_mtl
+map_Kd fern.png

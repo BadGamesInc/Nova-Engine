@@ -1,0 +1,3 @@
+# grassModel.mtl
+newmtl grass_mtl
+map_Kd grassTexture.png

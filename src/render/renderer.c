@@ -2,176 +2,161 @@
 // Created by gregorym on 5/10/26.
 //
 
+#include <stdio.h>
 #include <gl.h>
-#include <render/renderer.h>
-#include <render/model/model.h>
-#include <render/model/resourceloader.h>
-
-#include <render/shader.h>
 #include <cglm.h>
-#include <entity/entity.h>
-#include <util/mathutils.h>
-
+#include "render/renderer.h"
+#include "render/shader.h"
+#include "render/model/model.h"
+#include "render/model/resource_loader.h"
+#include "render/asset_manager.h"
+#include "render/entity_renderer.h"
+#include "util/mathutils.h"
+#include "util/containers.h"
 #include "engine.h"
-#include "entity/camera.h"
+#include "render/terrain_renderer.h"
 
 // Global variables
 //
-RawModel *      gp_model          = NULL;
-Texture *       gp_texture        = NULL;
-ModelTexture *  gp_model_texture  = NULL;
-TexturedModel * gp_textured_model = NULL;
-Entity *        gp_entity         = NULL;
-Camera *        gp_camera         = NULL;
-Shader *        gp_shader         = NULL;
-mat4            g_projection_mat  = {{0.0f}};
+static HashMap *       gp_batched_entities = NULL;
+static ArrayList *     gp_terrains         = NULL;
+static EntityShader *  gp_entity_shader    = NULL;
+static TerrainShader * gp_terrain_shader   = NULL;
+static mat4            g_projection_mat    = { { 0.0f } };
 
 void renderer_init (void)
 {
     init_resource_loader();
 
-    float vertices[72] = {
-        -0.5f,0.5f,-0.5f,
-        -0.5f,-0.5f,-0.5f,
-        0.5f,-0.5f,-0.5f,
-        0.5f,0.5f,-0.5f,
-
-        -0.5f,0.5f,0.5f,
-        -0.5f,-0.5f,0.5f,
-        0.5f,-0.5f,0.5f,
-        0.5f,0.5f,0.5f,
-
-        0.5f,0.5f,-0.5f,
-        0.5f,-0.5f,-0.5f,
-        0.5f,-0.5f,0.5f,
-        0.5f,0.5f,0.5f,
-
-        -0.5f,0.5f,-0.5f,
-        -0.5f,-0.5f,-0.5f,
-        -0.5f,-0.5f,0.5f,
-        -0.5f,0.5f,0.5f,
-
-        -0.5f,0.5f,0.5f,
-        -0.5f,0.5f,-0.5f,
-        0.5f,0.5f,-0.5f,
-        0.5f,0.5f,0.5f,
-
-        -0.5f,-0.5f,0.5f,
-        -0.5f,-0.5f,-0.5f,
-        0.5f,-0.5f,-0.5f,
-        0.5f,-0.5f,0.5f
-};
-
-    float texcoords[48] = {
-        0,0,
-        0,1,
-        1,1,
-        1,0,
-        0,0,
-        0,1,
-        1,1,
-        1,0,
-        0,0,
-        0,1,
-        1,1,
-        1,0,
-        0,0,
-        0,1,
-        1,1,
-        1,0,
-        0,0,
-        0,1,
-        1,1,
-        1,0,
-        0,0,
-        0,1,
-        1,1,
-        1,0
-};
-
-    int indices[36] = {
-        0,1,3,
-        3,1,2,
-        4,5,7,
-        7,5,6,
-        8,9,11,
-        11,9,10,
-        12,13,15,
-        15,13,14,
-        16,17,19,
-        19,17,18,
-        20,21,23,
-        23,21,22
-    };
-
     // Initialize globals
     //
-    // gp_model  = load_raw_model(vertices, sizeof(vertices) / sizeof(vertices[0]),
-        // texcoords, sizeof(texcoords) / sizeof(texcoords[0]),
-        // indices, sizeof(indices) / sizeof(indices[0]));
-    gp_model = load_from_obj_file("stall.obj");
-    gp_texture = load_texture("stallTexture.png", PNG);
-    gp_model_texture = create_model_texture(gp_texture);
-    gp_textured_model = create_textured_model(gp_model, gp_model_texture);
-    gp_entity = create_entity(gp_textured_model, (vec3) {0.0f, 0.0f, 0.0f}, (vec3) {1.0f, 1.0f, 1.0f}, (vec3) {});
-    gp_camera = create_camera(gp_entity);
-    gp_shader = create_shader("default.vert", "default.frag");
+    gp_batched_entities       = create_hashmap(
+        16, int_hash, container_int_compare, container_int_compare);
+    gp_terrains       = create_arraylist(16, STRUCT_COMPARE_FUNC(Terrain, id));
+    gp_entity_shader  = create_entity_shader();
+    gp_terrain_shader = create_terrain_shader();
 
     // Create projection matrix
     //
-    glm_perspective(FOV, get_aspect_ratio(), NEAR_PLANE, FAR_PLANE, g_projection_mat);
+    glm_perspective(
+        FOV, get_aspect_ratio(), NEAR_PLANE, FAR_PLANE, g_projection_mat);
 
-    // Load matrices to shader
+    // Initialize sub-render systems
     //
-    bind_shader(gp_shader);
-    uniform_mat4(gp_shader, "projection", g_projection_mat);
-    unbind_shader();
-
-
+    init_entity_renderer(gp_entity_shader, g_projection_mat);
+    init_terrain_renderer(gp_terrain_shader, g_projection_mat);
 }
 
+void enable_culling (void)
+{
+    glEnable(GL_CULL_FACE);
+    glCullFace(GL_BACK);
+}
+
+void disable_culling (void)
+{
+    glDisable(GL_CULL_FACE);
+}
+
+// Prepare the frame for rendering
+//
 void prepare_frame (void)
 {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    glClearColor (0.0f, 0.3f, 0.7f, 0.0f);
+    glClearColor(SKY_COLOR[0], SKY_COLOR[1], SKY_COLOR[2], 0.0f);
     glEnable(GL_DEPTH_TEST);
-    // glEnable(GL_CULL_FACE);
-    // glCullFace(GL_BACK);
+    enable_culling();
 }
 
-void render_model (const Entity * p_entity)
+// Unbind currently bound model and it's VAO
+//
+void unbind_model (void)
 {
-    const RawModel * raw_model = (RawModel *) p_entity->p_model;
-    glBindVertexArray(raw_model->vao_id);
-    glEnableVertexAttribArray(0);
-    glEnableVertexAttribArray(1);
-    bind_shader(gp_shader);
-    camera_move(gp_camera);
-    mat4 trans = {{0}};
-    mat4 view = {{0}};
-    get_view_matrix(gp_camera, view);
-    increase_rotation(p_entity, (vec3) {0.0f, 0.01f, 0.0f});
-    increase_position(p_entity, (vec3) {0.001f, 0.001f, -0.005f});
-    create_transformation_matrix(trans, p_entity->position, p_entity->rotation, p_entity->scale);
-    uniform_mat4(gp_shader, "view", view);
-    uniform_mat4(gp_shader, "transformation", trans);
-    bind_texture(gp_texture, 0);
-    glDrawElements(GL_TRIANGLES, raw_model->vertex_count, GL_UNSIGNED_INT, 0);
-    unbind_shader();
     glDisableVertexAttribArray(0);
     glDisableVertexAttribArray(1);
+    glDisableVertexAttribArray(2);
     glBindVertexArray(0);
+    enable_culling();
 }
 
-void renderer_render_main (void)
+/**
+ * Processes an Entity to be batch rendered
+ * @param entity The entity to process for rendering
+ */
+void process_entity (Entity * entity)
+{
+    unsigned int * p_model_id = entity->p_model->asset_id;
+    ArrayList *    batch      = hashmap_get(gp_batched_entities, p_model_id);
+
+    if (batch != NULL)
+    {
+        arraylist_add(batch, entity);
+    }
+    else
+    {
+        ArrayList * new_batch
+            = create_arraylist(16, STRUCT_COMPARE_FUNC(Entity, id));
+        arraylist_add(new_batch, entity);
+        hashmap_put(gp_batched_entities, p_model_id, new_batch);
+    }
+}
+
+void free_entity_list_loop (void * p_value)
+{
+    arraylist_free((ArrayList *)p_value, NULL);
+}
+
+void process_terrain (Terrain * p_terrain)
+{
+    arraylist_add(gp_terrains, p_terrain);
+}
+
+/**
+ * Renders the main scene, called in the main engine render method
+ * @param p_camera The camera to view the scene from
+ * @param p_light The main light to illuminate the scene
+ */
+void renderer_render_main (Camera * p_camera, const Light * p_light)
 {
     prepare_frame();
-    render_model(gp_entity);
+
+    // Set the view matrix
+    mat4 view = { { 0 } };
+    get_view_matrix(p_camera, view);
+
+    // Entity rendering
+    //
+    bind_shader((Shader *)gp_entity_shader);
+    entity_shader_load_light(gp_entity_shader, p_light);
+    entity_shader_load_fog_values(gp_entity_shader, FOG_DENSITY, FOG_GRADIENT, SKY_COLOR);
+    shader_uniform_mat4((Shader *)gp_entity_shader, "view", view);
+    batch_render_entity(gp_batched_entities);
+    unbind_shader();
+
+
+    // Terrain rendering
+    //
+    bind_shader((Shader *)gp_terrain_shader);
+    terrain_shader_load_light(gp_terrain_shader, p_light);
+    terrain_shader_load_fog_values(gp_terrain_shader, FOG_DENSITY, FOG_GRADIENT, SKY_COLOR);
+    shader_uniform_mat4((Shader *)gp_terrain_shader, "view", view);
+    render_terrains(gp_terrains);
+    unbind_shader();
+
+    // Clear the containers to repopulate on the next frame
+    hashmap_clear(gp_batched_entities, NULL, free_entity_list_loop);
+    arraylist_clear(gp_terrains, NULL);
+}
+
+void free_entity_list_clean (void * p_value)
+{
+    arraylist_free((ArrayList *)p_value, destroy_entity);
 }
 
 void renderer_cleanup (void)
 {
     clean_resources();
-    destroy_raw_model(gp_model);
-    destroy_textured_model(gp_textured_model);
+    free_hashmap(gp_batched_entities, free, free_entity_list_clean);
+    destroy_entity_shader(gp_entity_shader);
+    destroy_terrain_shader(gp_terrain_shader);
 }

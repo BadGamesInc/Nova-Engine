@@ -1,0 +1,3 @@
+# lowPolyTree.mtl
+newmtl lowPolyTree_mtl
+map_Kd lowPolyTree.png
