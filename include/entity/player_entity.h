@@ -4,13 +4,26 @@
 
 #ifndef NOVA_ENGINE_PLAYER_ENTITY_H
 #define NOVA_ENGINE_PLAYER_ENTITY_H
-#include "entity.h"
+
+#include "camera.h"
+#include "living_entity.h"
+#include "terrain/terrain.h"
 
 typedef struct
 {
-    Entity entity;
+    LivingEntity entity;
+    bool         is_running;
+    Animation *  p_current_target_anim;
 } PlayerEntity;
 
-void create_player_entity(PlayerEntity * p_player);
+PlayerEntity * create_player_entity(LoadedModel * p_model,
+                                    vec3          position,
+                                    int           texture_index,
+                                    unsigned int  id);
+void           destroy_player_entity(void * p_player);
+void           player_entity_update(PlayerEntity * p_player,
+                                    float          delta_time,
+                                    const Camera * p_camera);
+Terrain *      player_entity_get_current_terrain(const PlayerEntity * p_player);
 
-#endif //NOVA_ENGINE_PLAYER_ENTITY_H
+#endif // NOVA_ENGINE_PLAYER_ENTITY_H

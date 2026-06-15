@@ -12,4 +12,4 @@ void init_terrain_renderer(TerrainShader * p_shader, mat4 projection_matrix);
 void render_terrains(const ArrayList * p_terrains);
 void cleanup_terrain_renderer(void);
 
-#endif //NOVA_ENGINE_TERRAIN_RENDERER_H
+#endif // NOVA_ENGINE_TERRAIN_RENDERER_H

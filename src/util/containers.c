@@ -321,10 +321,59 @@ unsigned int int_hash (const void * key)
     return (unsigned int)value * 2654435761U;
 }
 
+unsigned int char_hash (const void * key)
+{
+    if (key == NULL)
+    {
+        nova_error("Key is NULL");
+        return 0;
+    }
+    const char value = *(const char *)key;
+    return (unsigned int)value * 2654435761U;
+}
+
+int container_char_compare (const void * key1, const void * key2)
+{
+    const char k1 = *(const char *)key1;
+    const char k2 = *(const char *)key2;
+
+    if (k1 < k2) return -1;
+    if (k1 > k2) return 1;
+    return 0;
+}
+
+char * char_dup(const char value) {
+    char * p_dup = malloc(sizeof(*p_dup));
+    if (p_dup == NULL) {
+        nova_error("Failed to allocate char_dup");
+        return NULL;
+    }
+    *p_dup = value;
+    return p_dup;
+}
+
 int container_int_compare (const void * key1, const void * key2)
 {
     const int k1 = *(const int *)key1;
     const int k2 = *(const int *)key2;
+
+    if (k1 < k2)
+    {
+        return -1;
+    }
+
+    if (k1 > k2)
+    {
+        return 1;
+    }
+
+    return 0;
+}
+
+int container_uint_compare (const void * key1, const void * key2)
+{
+    const unsigned int k1 = *(const unsigned int *)key1;
+    const unsigned int k2 = *(const unsigned int *)key2;
 
     if (k1 < k2)
     {
@@ -448,7 +497,7 @@ HashMap * create_hashmap (size_t            initial_capacity,
     map->capacity = initial_capacity;
     map->size     = 0;
     map->hash     = hash_func;
-    map->compare  = value_comp_func;
+    map->compare  = key_compare_func;
     map->buckets  = calloc(initial_capacity, sizeof(*map->buckets));
     map->p_keys   = create_arraylist(initial_capacity, key_compare_func);
     map->p_values = create_arraylist(initial_capacity, value_comp_func);

@@ -17,13 +17,13 @@ static TerrainShader * gp_terrain_shader = NULL;
 void init_terrain_renderer (TerrainShader * p_shader, mat4 projection_matrix)
 {
     gp_terrain_shader = p_shader;
-    bind_shader((Shader *) p_shader);
-    shader_uniform_mat4((Shader *) p_shader, "projection", projection_matrix);
+    bind_shader((Shader *)p_shader);
+    shader_uniform_mat4((Shader *)p_shader, "projection", projection_matrix);
     terrain_shader_connect_texture_units(p_shader);
     unbind_shader();
 }
 
-void bind_terrain_textures(const Terrain * p_terrain)
+void bind_terrain_textures (const Terrain * p_terrain)
 {
     const TerrainTexturePack texture_pack = p_terrain->texture_pack;
     bind_texture(&texture_pack.bg_texture, 0);
@@ -53,8 +53,10 @@ void prepare_terrain (const Terrain * p_terrain)
 void prepare_model_matrix (const Terrain * p_terrain)
 {
     mat4 trans = { { 0 } };
-    create_transformation_matrix(
-        trans, (vec3) {p_terrain->x, 0.0f, p_terrain->z}, (vec3) {0.0f, 0.0f, 0.0f}, (vec3) {1.0f, 1.0f, 1.0f});
+    create_transformation_matrix(trans,
+                                 (vec3) { p_terrain->x, 0.0f, p_terrain->z },
+                                 (vec3) { 0.0f, 0.0f, 0.0f },
+                                 (vec3) { 1.0f, 1.0f, 1.0f });
 
     // Load transformation matrix to shader
     shader_uniform_mat4((Shader *)gp_terrain_shader, "transformation", trans);
@@ -64,14 +66,15 @@ void prepare_model_matrix (const Terrain * p_terrain)
  * Render all terrains in the provided list
  * @param p_terrains The list of terrains to render
  */
-void render_terrains(const ArrayList * p_terrains)
+void render_terrains (const ArrayList * p_terrains)
 {
     for (int i = 0; i < arraylist_count(p_terrains); i++)
     {
         Terrain * p_terrain = arraylist_get(p_terrains, i);
         prepare_terrain(p_terrain);
         prepare_model_matrix(p_terrain);
-        glDrawElements(GL_TRIANGLES, p_terrain->model.vertex_count, GL_UNSIGNED_INT, 0);
+        glDrawElements(
+            GL_TRIANGLES, p_terrain->model.vertex_count, GL_UNSIGNED_INT, 0);
         unbind_model();
     }
 }

@@ -10,9 +10,11 @@
 
 #define STRUCT_COMPARE_FUNC(StructType, FieldName) \
     _Generic((((StructType *)0)->FieldName),       \
+        char : container_char_compare,             \
         char *: container_strcmp,                  \
         const char *: container_strcmp,            \
-        default: container_int_compare)
+        unsigned int : container_int_compare,      \
+        default: container_uint_compare)
 
 // General
 //
@@ -46,6 +48,10 @@ HashMap *    create_hashmap(size_t      initial_capacity,
                             CompareFunc value_comp_func);
 unsigned int hashmap_str_hash(const void * p_key);
 unsigned int int_hash(const void * key);
+unsigned int char_hash(const void * key);
+int          container_char_compare(const void * p_key1, const void * p_key2);
+int          container_uint_compare (const void * key1, const void * key2);
+char *       char_dup(char p_value);
 unsigned int hashmap_texture_model_hash(const void * key);
 int    hashmap_texture_model_compare(const void * p_key1, const void * p_key2);
 void   hashmap_put(HashMap * p_map, void * p_key, void * p_value);

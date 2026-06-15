@@ -136,18 +136,27 @@ void destroy_shader (Shader * p_shader)
 // Load a single float value to shader
 //
 void shader_uniform_1f (const Shader * p_shader,
-                 const char *   p_uniform_name,
-                 const float    value)
+                        const char *   p_uniform_name,
+                        const float    value)
 {
     glUniform1f(glGetUniformLocation(p_shader->program_id, p_uniform_name),
                 value);
 }
 
+// Load a vec2f to shader
+void shader_uniform_2f (const Shader * p_shader,
+                        const char *   p_uniform_name,
+                        const vec2     value)
+{
+    glUniform2fv(
+        glGetUniformLocation(p_shader->program_id, p_uniform_name), 1, value);
+}
+
 // Load a vec3f to the shader
 //
 void shader_uniform_3f (const Shader * p_shader,
-                 const char *   p_uniform_name,
-                 const vec3     value)
+                        const char *   p_uniform_name,
+                        const vec3     value)
 {
     glUniform3fv(
         glGetUniformLocation(p_shader->program_id, p_uniform_name), 1, value);
@@ -156,8 +165,8 @@ void shader_uniform_3f (const Shader * p_shader,
 // Load a 4x4 matrix to the shader
 //
 void shader_uniform_mat4 (const Shader * p_shader,
-                   const char *   p_uniform_name,
-                   const mat4     value)
+                          const char *   p_uniform_name,
+                          const mat4     value)
 {
     glUniformMatrix4fv(
         glGetUniformLocation(p_shader->program_id, p_uniform_name),
@@ -166,17 +175,17 @@ void shader_uniform_mat4 (const Shader * p_shader,
         value[0]);
 }
 
-void shader_uniform_bool(const Shader * p_shader,
-                         const char *    p_uniform_name,
-                         const bool      value)
+void shader_uniform_bool (const Shader * p_shader,
+                          const char *   p_uniform_name,
+                          const bool     value)
 {
     glUniform1i(glGetUniformLocation(p_shader->program_id, p_uniform_name),
                 (int)value);
 }
 
-void shader_uniform_1i(const Shader * p_shader,
-                       const char *   p_uniform_name,
-                       const int      value)
+void shader_uniform_1i (const Shader * p_shader,
+                        const char *   p_uniform_name,
+                        const int      value)
 {
     glUniform1i(glGetUniformLocation(p_shader->program_id, p_uniform_name),
                 value);
@@ -188,7 +197,7 @@ void shader_uniform_1i(const Shader * p_shader,
  */
 EntityShader * create_entity_shader (void)
 {
-    Shader *       p_shader        = create_shader("entity.vert", "entity.frag");
+    Shader *       p_shader = create_shader("entity.vert", "entity.frag");
     EntityShader * p_entity_shader = malloc(sizeof(*p_entity_shader));
 
     if (p_entity_shader == NULL)
@@ -218,7 +227,8 @@ void destroy_entity_shader (EntityShader * p_shader)
 void entity_shader_load_light (EntityShader * p_entity_shader,
                                const Light *  p_light)
 {
-    shader_uniform_3f((Shader *)p_entity_shader, "light_position", p_light->position);
+    shader_uniform_3f(
+        (Shader *)p_entity_shader, "light_position", p_light->position);
     shader_uniform_3f((Shader *)p_entity_shader, "light_color", p_light->color);
 }
 
@@ -234,23 +244,37 @@ void entity_shader_load_shine_values (EntityShader * p_entity_shader,
 
 // Load the fog values to the shader
 //
-void entity_shader_load_fog_values(EntityShader * p_entity_shader,
-                                   const float    density,
-                                   const float    gradient,
-                                   vec3           color)
+void entity_shader_load_fog_values (EntityShader * p_entity_shader,
+                                    const float    density,
+                                    const float    gradient,
+                                    vec3           color)
 {
     shader_uniform_1f((Shader *)p_entity_shader, "fog_density", density);
     shader_uniform_1f((Shader *)p_entity_shader, "fog_gradient", gradient);
     shader_uniform_3f((Shader *)p_entity_shader, "sky_color", color);
 }
 
+void entity_shader_load_tex_rows (EntityShader * p_entity_shader,
+                                  const float    rows)
+{
+    shader_uniform_1f((Shader *)p_entity_shader, "num_rows", rows);
+}
+
+void entity_shader_load_tex_offset (EntityShader * p_entity_shader,
+                                    const float    x_offset,
+                                    const float    y_offset)
+{
+    shader_uniform_2f(
+        (Shader *)p_entity_shader, "tex_offset", (vec2) { x_offset, y_offset });
+}
+
 /**
  * Create a new terrain shader and return the pointer
  * @return A pointer to the new terrain shader
  */
-TerrainShader * create_terrain_shader(void)
+TerrainShader * create_terrain_shader (void)
 {
-    Shader *        p_shader         = create_shader("terrain.vert", "terrain.frag");
+    Shader *        p_shader = create_shader("terrain.vert", "terrain.frag");
     TerrainShader * p_terrain_shader = malloc(sizeof(*p_terrain_shader));
 
     if (p_terrain_shader == NULL)
@@ -266,7 +290,7 @@ TerrainShader * create_terrain_shader(void)
     return p_terrain_shader;
 }
 
-void destroy_terrain_shader(TerrainShader * p_shader)
+void destroy_terrain_shader (TerrainShader * p_shader)
 {
     glDeleteProgram(p_shader->shader.program_id);
     free(p_shader);
@@ -277,7 +301,8 @@ void destroy_terrain_shader(TerrainShader * p_shader)
 void terrain_shader_load_light (TerrainShader * p_entity_shader,
                                 const Light *   p_light)
 {
-    shader_uniform_3f((Shader *)p_entity_shader, "light_position", p_light->position);
+    shader_uniform_3f(
+        (Shader *)p_entity_shader, "light_position", p_light->position);
     shader_uniform_3f((Shader *)p_entity_shader, "light_color", p_light->color);
 }
 
@@ -293,23 +318,40 @@ void terrain_shader_load_shine_values (TerrainShader * p_entity_shader,
 
 // Load the fog values to the shader
 //
-void terrain_shader_load_fog_values(TerrainShader * p_terrain_shader,
-                                    const float     density,
-                                    const float     gradient,
-                                    vec3            color)
+void terrain_shader_load_fog_values (TerrainShader * p_terrain_shader,
+                                     const float     density,
+                                     const float     gradient,
+                                     vec3            color)
 {
     shader_uniform_1f((Shader *)p_terrain_shader, "fog_density", density);
     shader_uniform_1f((Shader *)p_terrain_shader, "fog_gradient", gradient);
     shader_uniform_3f((Shader *)p_terrain_shader, "sky_color", color);
 }
 
-// Send the appropriate terrain textures to the correct texture units in the shader
+// Send the appropriate terrain textures to the correct texture units in the
+// shader
 //
-void terrain_shader_connect_texture_units(TerrainShader * p_terrain_shader)
+void terrain_shader_connect_texture_units (TerrainShader * p_terrain_shader)
 {
-    shader_uniform_1i((Shader *) p_terrain_shader, "background_texture", 0);
-    shader_uniform_1i((Shader *) p_terrain_shader, "r_texture", 1);
-    shader_uniform_1i((Shader *) p_terrain_shader, "g_texture", 2);
-    shader_uniform_1i((Shader *) p_terrain_shader, "b_texture", 3);
-    shader_uniform_1i((Shader *) p_terrain_shader, "blend_map", 4);
+    shader_uniform_1i((Shader *)p_terrain_shader, "background_texture", 0);
+    shader_uniform_1i((Shader *)p_terrain_shader, "r_texture", 1);
+    shader_uniform_1i((Shader *)p_terrain_shader, "g_texture", 2);
+    shader_uniform_1i((Shader *)p_terrain_shader, "b_texture", 3);
+    shader_uniform_1i((Shader *)p_terrain_shader, "blend_map", 4);
+}
+
+FontShader * create_font_shader (void)
+{
+    Shader *     p_shader      = create_shader("font.vert", "font.frag");
+    FontShader * p_font_shader = malloc(sizeof(*p_font_shader));
+
+    p_font_shader->shader = *p_shader;
+    free(p_shader);
+
+    return p_font_shader;
+}
+
+void destroy_font_shader(void * p_shader)
+{
+    free(p_shader);
 }

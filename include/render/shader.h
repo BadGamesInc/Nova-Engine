@@ -25,6 +25,11 @@ typedef struct
     Shader shader;
 } TerrainShader;
 
+typedef struct
+{
+    Shader shader;
+} FontShader;
+
 Shader * create_shader(const char * p_vertex_file_name,
                        const char * p_fragment_file_name);
 void     bind_shader(const Shader * p_shader);
@@ -33,6 +38,9 @@ void     destroy_shader(Shader * p_shader);
 void     shader_uniform_1f(const Shader * p_shader,
                            const char *   p_uniform_name,
                            float          value);
+void     shader_uniform_2f(const Shader * p_shader,
+                           const char *   p_uniform_name,
+                           const vec2     value);
 void     shader_uniform_3f(const Shader * p_shader,
                            const char *   p_uniform_name,
                            const vec3     value);
@@ -40,9 +48,8 @@ void     shader_uniform_mat4(const Shader * p_shader,
                              const char *   p_uniform_name,
                              const mat4     value);
 void     shader_uniform_bool(const Shader * p_shader,
-                            const char *    p_uniform_name,
-                            bool            value
-                         );
+                             const char *   p_uniform_name,
+                             bool           value);
 void     shader_uniform_1i(const Shader * p_shader,
                            const char *   p_uniform_name,
                            int            value);
@@ -54,26 +61,34 @@ void           destroy_entity_shader(EntityShader * p_shader);
 void           entity_shader_load_light(EntityShader * p_entity_shader,
                                         const Light *  p_light);
 void           entity_shader_load_shine_values(EntityShader * p_entity_shader,
-                                             float          shine_damper,
-                                             float          reflectivity);
+                                               float          shine_damper,
+                                               float          reflectivity);
 void           entity_shader_load_fog_values(EntityShader * p_entity_shader,
                                              float          density,
                                              float          gradient,
                                              vec3           color);
+void entity_shader_load_tex_rows(EntityShader * p_entity_shader, float rows);
+void entity_shader_load_tex_offset(EntityShader * p_entity_shader,
+                                   float          x_offset,
+                                   float          y_offset);
 
 // Terrain Shader
 //
 TerrainShader * create_terrain_shader(void);
-void           destroy_terrain_shader(TerrainShader * p_shader);
-void           terrain_shader_load_light(TerrainShader * p_entity_shader,
-                                         const Light *   p_light);
-void           terrain_shader_load_shine_values(TerrainShader * p_entity_shader,
-                                                float           shine_damper,
-                                                float           reflectivity);
-void           terrain_shader_load_fog_values(TerrainShader * p_terrain_shader,
-                                              float           density,
-                                              float           gradient,
-                                              vec3            color);
-void           terrain_shader_connect_texture_units(TerrainShader * p_terrain_shader);
+void            destroy_terrain_shader(TerrainShader * p_shader);
+void            terrain_shader_load_light(TerrainShader * p_entity_shader,
+                                          const Light *   p_light);
+void terrain_shader_load_shine_values(TerrainShader * p_entity_shader,
+                                      float           shine_damper,
+                                      float           reflectivity);
+void terrain_shader_load_fog_values(TerrainShader * p_terrain_shader,
+                                    float           density,
+                                    float           gradient,
+                                    vec3            color);
+void terrain_shader_connect_texture_units(TerrainShader * p_terrain_shader);
+
+// Font Shader
+FontShader * create_font_shader(void);
+void        destroy_font_shader(void * p_shader);
 
 #endif // NOVA_ENGINE_SHADER_H

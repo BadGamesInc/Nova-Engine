@@ -13,6 +13,7 @@
 #include "render/asset_manager.h"
 #include "render/model/resource_loader.h"
 #include "util/mathutils.h"
+#include "util/nova_logger.h"
 
 static EntityShader * gp_entity_shader = NULL;
 
@@ -26,37 +27,14 @@ void init_entity_renderer (EntityShader * p_shader, mat4 projection_matrix)
     // Load matrices to shader
     //
     bind_shader((Shader *)gp_entity_shader);
-    shader_uniform_mat4((Shader *)gp_entity_shader, "projection", projection_matrix);
+    shader_uniform_mat4(
+        (Shader *)gp_entity_shader, "projection", projection_matrix);
     unbind_shader();
-}
-
-// Prepare the model for rendering
-//
-void prepare_model (TexturedModel * p_model)
-{
-    const RawModel * raw_model = &p_model->raw_model;
-
-    // Bind VAO and VAO elements
-    glBindVertexArray(raw_model->vao_id);
-    glEnableVertexAttribArray(0);
-    glEnableVertexAttribArray(1);
-    glEnableVertexAttribArray(2);
-
-    if (p_model->texture.has_transparency)
-    {
-        disable_culling();
-    }
-
-    shader_uniform_bool((Shader *)gp_entity_shader, "use_fake_normals", p_model->texture.use_fake_normals);
-    entity_shader_load_shine_values(gp_entity_shader,
-                                    p_model->texture.shine_damper,
-                                    p_model->texture.reflectivity);
-    bind_texture((Texture *)&p_model->texture, 0);
 }
 
 // Prepare the entity transformation
 //
-void prepare_entity (Entity * p_entity)
+static void prepare_entity (Entity * p_entity, const MeshEntry * p_mesh)
 {
     mat4 trans = { { 0 } };
     create_transformation_matrix(
@@ -64,6 +42,21 @@ void prepare_entity (Entity * p_entity)
 
     // Load values to shader
     shader_uniform_mat4((Shader *)gp_entity_shader, "transformation", trans);
+    entity_shader_load_tex_offset(gp_entity_shader,
+                                  entity_get_tex_x_offset(p_entity, p_mesh),
+                                  entity_get_tex_y_offset(p_entity, p_mesh));
+}
+
+static void upload_bone_matrices (const AnimationState * p_state)
+{
+    for (int i = 0; i < p_state->p_skeleton->bone_count; i++)
+    {
+        char uniform_name[32];
+        snprintf(uniform_name, sizeof(uniform_name), "bone_matrices[%d]", i);
+        shader_uniform_mat4((Shader *)gp_entity_shader,
+                            uniform_name,
+                            p_state->bone_matrices[i]);
+    }
 }
 
 static void prepare_mesh_entry (const MeshEntry * p_mesh)
@@ -73,38 +66,30 @@ static void prepare_mesh_entry (const MeshEntry * p_mesh)
     glEnableVertexAttribArray(1);
     glEnableVertexAttribArray(2);
 
+    if (p_mesh->is_animated)
+    {
+        glEnableVertexAttribArray(3);
+        glEnableVertexAttribArray(4);
+    }
+
     if (p_mesh->has_transparency)
     {
         disable_culling();
     }
 
-    shader_uniform_bool((Shader *)gp_entity_shader, "use_fake_normals", p_mesh->use_fake_normals);
-    entity_shader_load_shine_values(gp_entity_shader, p_mesh->shine_damper, p_mesh->reflectivity);
+    shader_uniform_bool((Shader *)gp_entity_shader,
+                        "use_fake_normals",
+                        p_mesh->use_fake_normals);
+    shader_uniform_bool(
+        (Shader *)gp_entity_shader, "is_animated", p_mesh->is_animated);
+    entity_shader_load_shine_values(
+        gp_entity_shader, p_mesh->shine_damper, p_mesh->reflectivity);
 
     if (p_mesh->p_texture != NULL)
     {
+        entity_shader_load_tex_rows(gp_entity_shader,
+                                    p_mesh->p_texture->num_rows);
         bind_texture(p_mesh->p_texture, 0);
-    }
-}
-
-void render_loaded_model (const LoadedModel * p_loaded_model,
-                          Entity *            p_entity)
-{
-    prepare_entity(p_entity);
-
-    for (unsigned int i = 0; i < p_loaded_model->mesh_count; i++)
-    {
-        const MeshEntry * p_mesh = &p_loaded_model->p_meshes[i];
-        if (p_mesh->p_raw_model == NULL)
-        {
-            continue;
-        }
-        prepare_mesh_entry(p_mesh);
-        glDrawElements(GL_TRIANGLES,
-                       p_mesh->p_raw_model->vertex_count,
-                       GL_UNSIGNED_INT,
-                       0);
-        unbind_model();
     }
 }
 
@@ -139,7 +124,13 @@ void batch_render_entity (const HashMap * p_entity_map)
             for (int j = 0; j < arraylist_count(p_batch); j++)
             {
                 Entity * p_entity = arraylist_get(p_batch, j);
-                prepare_entity(p_entity);
+                prepare_entity(p_entity, p_mesh);
+
+                if (p_mesh->is_animated && p_entity->p_animation_state != NULL)
+                {
+                    upload_bone_matrices(p_entity->p_animation_state);
+                }
+
                 glDrawElements(GL_TRIANGLES,
                                p_mesh->p_raw_model->vertex_count,
                                GL_UNSIGNED_INT,

@@ -9,21 +9,40 @@
 
 #include "render/model/resource_loader.h"
 
+#define ENTITY_INSTANCEOF(p_entity, entity_type) \
+    (((Entity *)(p_entity))->type & (entity_type))
+
+typedef enum
+{
+    ENTITY_TYPE_BASE,
+    ENTITY_TYPE_LIVING,
+    ENTITY_TYPE_PLAYER
+} EntityType;
+
 typedef struct
 {
-    unsigned int    id;
-    vec3            rotation;
-    vec3            position;
-    vec3            scale;
-    LoadedModel *   p_model;
+    EntityType       type;
+    unsigned int     id;
+    vec3             rotation;
+    vec3             position;
+    vec3             scale;
+    int              texture_index;
+    LoadedModel *    p_model;
+    AnimationState * p_animation_state;
 } Entity;
 
-Entity * create_entity(LoadedModel *   p_model,
-                       vec3            rotation,
-                       vec3            scale,
-                       vec3            position,
-                       unsigned int    id);
+Entity * create_entity(LoadedModel * p_model,
+                       vec3          rotation,
+                       vec3          scale,
+                       vec3          position,
+                       int           texture_index,
+                       unsigned int  id);
 void     destroy_entity(void * p_entity);
+void     entity_update(Entity * p_entity, float delta_time);
+float    entity_get_tex_x_offset(const Entity *    p_entity,
+                                 const MeshEntry * p_entry);
+float    entity_get_tex_y_offset(const Entity *    p_entity,
+                                 const MeshEntry * p_entry);
 void     entity_get_position(Entity * p_entity, vec3 dest);
 void     entity_set_position(Entity * p_entity, vec3 position);
 void     entity_get_scale(Entity * p_entity, vec3 dest);

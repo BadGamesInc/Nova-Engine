@@ -9,6 +9,7 @@
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 
+#include "render/model/skeleton_loader.h"
 #include "util/fileutils.h"
 #include "util/nova_logger.h"
 
@@ -85,6 +86,38 @@ void add_texture (const unsigned int texture_id)
     texture_count++;
 }
 
+static void store_bone_indices (const int *        p_data,
+                                const unsigned int vertex_count)
+{
+    unsigned int vbo_id = 0;
+    glGenBuffers(1, &vbo_id);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo_id);
+    glBufferData(GL_ARRAY_BUFFER,
+                 (GLsizeiptr)(vertex_count * MAX_BONE_INFLUENCE * sizeof(int)),
+                 p_data,
+                 GL_STATIC_DRAW);
+    glVertexAttribIPointer(
+        3, MAX_BONE_INFLUENCE, GL_INT, 0, NULL); // note: IPointer for integers
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    add_vbo(vbo_id);
+}
+
+static void store_bone_weights (const float *      p_data,
+                                const unsigned int vertex_count)
+{
+    unsigned int vbo_id = 0;
+    glGenBuffers(1, &vbo_id);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo_id);
+    glBufferData(
+        GL_ARRAY_BUFFER,
+        (GLsizeiptr)(vertex_count * MAX_BONE_INFLUENCE * sizeof(float)),
+        p_data,
+        GL_STATIC_DRAW);
+    glVertexAttribPointer(4, MAX_BONE_INFLUENCE, GL_FLOAT, GL_FALSE, 0, NULL);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    add_vbo(vbo_id);
+}
+
 /**
  * Stores the provided vertices in the provided attribute of the VAO
  * @param attribute The attribute to store the data in
@@ -92,10 +125,10 @@ void add_texture (const unsigned int texture_id)
  * @param p_data The vertices to store in the vao
  * @param data_length The number of vertices in the array
  */
-void store_data_vao (const int          attribute,
-                     const int          dimensions,
-                     const float *      p_data,
-                     const unsigned int data_length)
+static void store_data_vao (const int          attribute,
+                            const int          dimensions,
+                            const float *      p_data,
+                            const unsigned int data_length)
 {
     unsigned int vbo_id = 0;
     glGenBuffers(1, &vbo_id);
@@ -114,8 +147,8 @@ void store_data_vao (const int          attribute,
  * @param p_indices The indices to store
  * @param indices_length The size of the indices array
  */
-void bind_indices_buffer (const unsigned int * p_indices,
-                          const unsigned int   indices_length)
+static void bind_indices_buffer (const unsigned int * p_indices,
+                                 const unsigned int   indices_length)
 {
     unsigned int vbo_id = 0;
     glGenBuffers(1, &vbo_id);
@@ -137,6 +170,9 @@ void bind_indices_buffer (const unsigned int * p_indices,
  * @param indices_length The size of the index array
  * @param p_normals The normals of the mesh
  * @param normals_length The size of the normal array
+ * @param p_bone_indices The list of bone indices
+ * @param p_bone_weights The list of bone weights
+ * @param vertex_count Vertex count
  * @return A pointer to the newly created RawModel
  */
 RawModel * load_raw_model (const float *        p_vertices,
@@ -146,7 +182,10 @@ RawModel * load_raw_model (const float *        p_vertices,
                            const unsigned int * p_indices,
                            const unsigned int   indices_length,
                            const float *        p_normals,
-                           const unsigned int   normals_length)
+                           const unsigned int   normals_length,
+                           const int *          p_bone_indices,
+                           const float *        p_bone_weights,
+                           const unsigned int   vertex_count)
 {
     unsigned int vao_id = 0;
     glGenVertexArrays(1, &vao_id);
@@ -156,6 +195,12 @@ RawModel * load_raw_model (const float *        p_vertices,
     store_data_vao(0, 3, p_vertices, vertices_length);
     store_data_vao(1, 2, p_texture_coords, texture_coords_length);
     store_data_vao(2, 3, p_normals, normals_length);
+
+    if (p_bone_indices != NULL && p_bone_weights != NULL)
+    {
+        store_bone_indices(p_bone_indices, vertex_count);
+        store_bone_weights(p_bone_weights, vertex_count);
+    }
     glBindVertexArray(0);
 
     RawModel * p_model = create_raw_model(vao_id, (int)indices_length);
@@ -261,7 +306,10 @@ RawModel * load_from_obj_file (const char * p_obj_filename)
                                         p_indices,
                                         indices_length,
                                         p_normals,
-                                        normals_length);
+                                        normals_length,
+                                        NULL,
+                                        NULL,
+                                        0);
 
     // Free resources used
     free(p_tex_coords);
@@ -290,7 +338,8 @@ static Texture * load_texture_path (const char * p_absolute_path)
 }
 
 // Load an assimp mesh into a RawModel
-static RawModel * load_ai_mesh (const struct aiMesh * p_mesh)
+static RawModel * load_ai_mesh (const struct aiMesh * p_mesh,
+                                const Skeleton *      p_skeleton)
 {
     const unsigned int vertex_count      = p_mesh->mNumVertices;
     const unsigned int vertices_length   = vertex_count * 3;
@@ -301,7 +350,8 @@ static RawModel * load_ai_mesh (const struct aiMesh * p_mesh)
     float * p_tex_coords = malloc(sizeof(float) * tex_coords_length);
     if (p_tex_coords == NULL)
     {
-        nova_error("Failed to allocate texture coords for mesh %s", p_mesh->mName.data);
+        nova_error("Failed to allocate texture coords for mesh %s",
+                   p_mesh->mName.data);
         return NULL;
     }
 
@@ -329,30 +379,61 @@ static RawModel * load_ai_mesh (const struct aiMesh * p_mesh)
     unsigned int * p_indices = malloc(sizeof(unsigned int) * indices_length);
     if (p_indices == NULL)
     {
-        nova_error("Failed to allocate indices for mesh %s", p_mesh->mName.data);
+        nova_error("Failed to allocate indices for mesh %s",
+                   p_mesh->mName.data);
         free(p_tex_coords);
         return NULL;
     }
 
-    unsigned int idx = 0;
+    unsigned int index = 0;
     for (unsigned int i = 0; i < p_mesh->mNumFaces; i++)
     {
         const struct aiFace face = p_mesh->mFaces[i];
         for (unsigned int j = 0; j < face.mNumIndices; j++)
         {
-            p_indices[idx++] = face.mIndices[j];
+            p_indices[index++] = face.mIndices[j];
         }
     }
 
-    RawModel * p_model = load_raw_model(
-        (const float *)p_mesh->mVertices,   vertices_length,
-        p_tex_coords,                        tex_coords_length,
-        p_indices,                           indices_length,
-        (const float *)p_mesh->mNormals,    normals_length
-    );
+    int *   p_bone_indices = NULL;
+    float * p_bone_weights = NULL;
+
+    if (p_skeleton != NULL && p_mesh->mNumBones > 0)
+    {
+        p_bone_indices
+            = malloc(sizeof(int) * vertex_count * MAX_BONE_INFLUENCE);
+        p_bone_weights
+            = malloc(sizeof(float) * vertex_count * MAX_BONE_INFLUENCE);
+
+        if (p_bone_indices == NULL || p_bone_weights == NULL)
+        {
+            nova_error(
+                "Failed to allocate bone indices and weights for mesh %s",
+                p_mesh->mName.data);
+            free(p_tex_coords);
+            free(p_indices);
+            return NULL;
+        }
+        extract_bone_weights(
+            p_mesh, p_skeleton, p_bone_indices, p_bone_weights);
+    }
+
+    RawModel * p_model = load_raw_model((const float *)p_mesh->mVertices,
+                                        vertices_length,
+                                        p_tex_coords,
+                                        tex_coords_length,
+                                        p_indices,
+                                        indices_length,
+                                        (const float *)p_mesh->mNormals,
+                                        normals_length,
+                                        p_bone_indices,
+                                        p_bone_weights,
+                                        vertex_count);
 
     free(p_tex_coords);
     free(p_indices);
+    free(p_bone_indices);
+    free(p_bone_weights);
 
     return p_model;
 }
@@ -364,8 +445,16 @@ static char * build_texture_path (const struct aiScene * p_scene,
     const struct aiMaterial * p_mat = p_scene->mMaterials[material_index];
     struct aiString           tex_path;
 
-    if (aiGetMaterialTexture(p_mat, aiTextureType_DIFFUSE, 0,
-                             &tex_path, NULL, NULL, NULL, NULL, NULL, NULL)
+    if (aiGetMaterialTexture(p_mat,
+                             aiTextureType_DIFFUSE,
+                             0,
+                             &tex_path,
+                             NULL,
+                             NULL,
+                             NULL,
+                             NULL,
+                             NULL,
+                             NULL)
         != AI_SUCCESS)
     {
         return NULL; // no diffuse texture on this material (e.g., Eye_Crystal)
@@ -374,34 +463,108 @@ static char * build_texture_path (const struct aiScene * p_scene,
     // Normalize backslashes from Windows-authored MTLs
     for (char * c = tex_path.data; *c != '\0'; c++)
     {
-        if (*c == '\\') *c = '/';
+        if (*c == '\\')
+        {
+            *c = '/';
+        }
     }
 
     // model_dir already ends with '/' so concatenate directly:
     // e.g. ".../Stylized_Paladin/" + "Textures/Armor_Base_color.png"
-    const size_t len = strlen(model_dir) + strlen(tex_path.data) + 1;
-    char * p_full_path = malloc(len);
-    if (p_full_path == NULL) return NULL;
+    const size_t len         = strlen(model_dir) + strlen(tex_path.data) + 1;
+    char *       p_full_path = malloc(len);
+    if (p_full_path == NULL)
+    {
+        return NULL;
+    }
     snprintf(p_full_path, len, "%s%s", model_dir, tex_path.data);
 
     return p_full_path;
 }
 
-LoadedModel * load_model_from_obj (const char * p_model_folder, const char * p_obj_filename, const unsigned int asset_id)
+static Texture * load_material_texture (const struct aiScene * p_scene,
+                                        unsigned int           material_index,
+                                        const char *           model_dir)
+{
+    const struct aiMaterial * p_mat = p_scene->mMaterials[material_index];
+    struct aiString           tex_path;
+
+    if (aiGetMaterialTexture(p_mat,
+                             aiTextureType_DIFFUSE,
+                             0,
+                             &tex_path,
+                             NULL,
+                             NULL,
+                             NULL,
+                             NULL,
+                             NULL,
+                             NULL)
+        != AI_SUCCESS)
+    {
+        return NULL;
+    }
+
+    if (tex_path.data[0] == '*')
+    {
+        const int index = atoi(tex_path.data + 1);
+        if (index < 0 || index >= (int)p_scene->mNumTextures)
+        {
+            nova_error("Invalid texture index %d", index);
+            return NULL;
+        }
+
+        const struct aiTexture * p_texture = p_scene->mTextures[index];
+
+        // mHeight == 0 means data is compressed BLOB, mWidth is size of BLOB in
+        // bytes
+        if (p_texture->mHeight == 0)
+        {
+            return load_texture_from_memory((unsigned char *)p_texture->pcData,
+                                            (int)p_texture->mWidth);
+        }
+
+        nova_error("Uncompressed embedded textures not supported");
+        return NULL;
+    }
+
+    for (char * c = tex_path.data; *c != '\0'; c++)
+    {
+        if (*c == '\\')
+        {
+            *c = '/';
+        }
+    }
+
+    const size_t len         = strlen(model_dir) + strlen(tex_path.data) + 1;
+    char *       p_full_path = malloc(len);
+    if (p_full_path == NULL)
+    {
+        return NULL;
+    }
+    snprintf(p_full_path, len, "%s%s", model_dir, tex_path.data);
+
+    Texture * p_tex = load_texture_path(p_full_path);
+    free(p_full_path);
+    return p_tex;
+}
+
+LoadedModel * load_model_from_obj (const char *       p_model_folder,
+                                   const char *       p_obj_filename,
+                                   const unsigned int asset_id)
 {
     char p_folder_key[256];
     snprintf(p_folder_key, sizeof(p_folder_key), "models/%s", p_model_folder);
 
-    const char * p_obj_filepath = get_resource_location(p_folder_key, p_obj_filename);
-    const char * p_model_dir    = get_resource_location(p_folder_key, "");
+    const char * p_obj_filepath
+        = get_resource_location(p_folder_key, p_obj_filename);
+    const char * p_model_dir = get_resource_location(p_folder_key, "");
 
-    const struct aiScene * p_scene
-        = aiImportFile(p_obj_filepath,
-                   aiProcess_CalcTangentSpace
-                       | aiProcess_Triangulate
-                       | aiProcess_JoinIdenticalVertices
-                       | aiProcess_SortByPType
-                       | aiProcess_FlipUVs);
+    const struct aiScene * p_scene = aiImportFile(
+        p_obj_filepath,
+        aiProcess_CalcTangentSpace | aiProcess_Triangulate
+            | aiProcess_JoinIdenticalVertices | aiProcess_SortByPType
+            | aiProcess_FlipUVs | aiProcess_LimitBoneWeights
+            | aiProcess_PopulateArmatureData);
 
     if (p_scene == NULL)
     {
@@ -451,9 +614,13 @@ LoadedModel * load_model_from_obj (const char * p_model_folder, const char * p_o
     for (unsigned int i = 0; i < mesh_count; i++)
     {
         const struct aiMesh * p_ai_mesh = p_scene->mMeshes[i];
-        MeshEntry * p_mesh              = &p_model->p_meshes[i];
+        MeshEntry *           p_mesh    = &p_model->p_meshes[i];
 
-        p_mesh->p_raw_model = load_ai_mesh(p_ai_mesh);
+        Skeleton * p_skeleton = load_skeleton_from_scene(p_scene);
+        p_model->p_skeleton   = p_skeleton;
+
+        p_mesh->p_raw_model = load_ai_mesh(p_ai_mesh, p_skeleton);
+        p_mesh->is_animated = p_skeleton != NULL && p_ai_mesh->mNumBones > 0;
         if (p_mesh->p_raw_model == NULL)
         {
             nova_error("Failed to load mesh %u %s", i, p_ai_mesh->mName.data);
@@ -464,27 +631,24 @@ LoadedModel * load_model_from_obj (const char * p_model_folder, const char * p_o
         const unsigned int mat_index = p_ai_mesh->mMaterialIndex;
         if (pp_texture_cache[mat_index] == NULL)
         {
-            char * tex_filename = build_texture_path(p_scene, mat_index, p_model_dir);
-            if (tex_filename != NULL)
-            {
-                pp_texture_cache[mat_index] = load_texture_path(tex_filename);
-                free(tex_filename);
-            }
+            pp_texture_cache[mat_index]
+                = load_material_texture(p_scene, mat_index, p_model_dir);
         }
         p_mesh->p_texture = pp_texture_cache[mat_index];
 
-        float shininess = 0.0f;
-        float opacity   = 1.0f;
-        const struct aiMaterial * p_mat = p_scene->mMaterials[p_ai_mesh->mMaterialIndex];
+        float                     shininess = 0.0f;
+        float                     opacity   = 1.0f;
+        const struct aiMaterial * p_mat
+            = p_scene->mMaterials[p_ai_mesh->mMaterialIndex];
         aiGetMaterialFloat(p_mat, AI_MATKEY_SHININESS, &shininess);
         aiGetMaterialFloat(p_mat, AI_MATKEY_OPACITY, &opacity);
         struct aiColor4D specular;
-        if (aiGetMaterialColor(p_mat, AI_MATKEY_COLOR_SPECULAR, &specular) == AI_SUCCESS)
+        if (aiGetMaterialColor(p_mat, AI_MATKEY_COLOR_SPECULAR, &specular)
+            == AI_SUCCESS)
         {
-            p_mesh->reflectivity = (specular.r + specular.g + specular.b) / 3.0f;
+            p_mesh->reflectivity
+                = (specular.r + specular.g + specular.b) / 3.0f;
             p_mesh->shine_damper = glm_max(shininess, 10.0f);
-            // p_mesh->reflectivity = 2.0f;
-            nova_info("%f %f", p_mesh->reflectivity, p_mesh->shine_damper);
         }
         else
         {
@@ -494,6 +658,13 @@ LoadedModel * load_model_from_obj (const char * p_model_folder, const char * p_o
 
         p_mesh->has_transparency = opacity < 1.0f;
         p_mesh->use_fake_normals = false;
+
+        nova_info("Mesh %u material %u texture_id=%u",
+                  i,
+                  p_ai_mesh->mMaterialIndex,
+                  p_model->p_meshes[i].p_texture != NULL
+                      ? p_model->p_meshes[i].p_texture->texture_id
+                      : 0);
     }
 
     free(pp_texture_cache);
@@ -503,7 +674,7 @@ LoadedModel * load_model_from_obj (const char * p_model_folder, const char * p_o
     return p_model;
 }
 
-void destroy_loaded_model(void * p_value)
+void destroy_loaded_model (void * p_value)
 {
     LoadedModel * p_loaded_model = p_value;
     if (p_loaded_model == NULL)
@@ -516,6 +687,7 @@ void destroy_loaded_model(void * p_value)
         free(p_loaded_model->p_meshes[i].p_raw_model);
     }
 
+    destroy_skeleton(p_loaded_model->p_skeleton);
     free(p_loaded_model->p_meshes);
     free(p_loaded_model);
 }

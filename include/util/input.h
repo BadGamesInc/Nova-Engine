@@ -6,6 +6,7 @@
 #define NOVA_ENGINE_INPUT_H
 
 #include <stdbool.h>
+#include <GLFW/glfw3.h>
 
 bool   is_key_pressed(int key);
 bool   is_mouse_button_pressed(int button);
@@ -17,4 +18,4 @@ double get_mouse_scroll_x(void);
 double get_mouse_scroll_y(void);
 void   input_cleanup(void);
 
-#endif //NOVA_ENGINE_INPUT_H
+#endif // NOVA_ENGINE_INPUT_H

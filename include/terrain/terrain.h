@@ -5,9 +5,8 @@
 #ifndef NOVA_ENGINE_TERRAIN_H
 #define NOVA_ENGINE_TERRAIN_H
 
-#define SIZE            800
-#define MAX_HEIGHT      40
-#define MAX_PIXEL_COLOR (256 * 256 * 256)
+#define TERRAIN_SIZE              800
+#define HEIGHTMAP_MAX_PIXEL_COLOR (256 * 256 * 256)
 
 #include "render/model/model.h"
 
@@ -24,14 +23,29 @@ typedef struct
     unsigned int       id;
     float              x;
     float              z;
+    int                grid_x;
+    int                grid_z;
+    int                max_height;
+    float **           pp_heights;
+    int                heights_length;
     RawModel           model;
     TerrainTexturePack texture_pack;
     Texture            blend_map;
 } Terrain;
 
-TerrainTexturePack * create_terrain_texture_pack(Texture * p_bg_texture, Texture * p_r_texture, Texture * p_g_texture, Texture * p_b_texture);
-void                 destroy_terrain_texture_pack(TerrainTexturePack * p_texture_pack);
-Terrain *            create_terrain(int grid_x, int grid_z, const Image * p_heightmap, const TerrainTexturePack * p_texture_pack, const Texture * p_blend_map);
-void                 destroy_terrain(void * p_terrain);
+TerrainTexturePack * create_terrain_texture_pack(Texture * p_bg_texture,
+                                                 Texture * p_r_texture,
+                                                 Texture * p_g_texture,
+                                                 Texture * p_b_texture);
+void      destroy_terrain_texture_pack(TerrainTexturePack * p_texture_pack);
+Terrain * create_terrain(int                        grid_x,
+                         int                        grid_z,
+                         const Image *              p_heightmap,
+                         const TerrainTexturePack * p_texture_pack,
+                         const Texture *            p_blend_map);
+void      destroy_terrain(void * p_terrain);
+float     terrain_get_height_at(const Terrain * p_terrain,
+                                float           world_x,
+                                float           world_z);
 
 #endif // NOVA_ENGINE_TERRAIN_H

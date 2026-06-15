@@ -22,6 +22,16 @@ set(BUILD_SHARED_LIBS         OFF CACHE BOOL "" FORCE)
 # Assuming you cloned it into external/assimp
 add_subdirectory(external/assimp SYSTEM) # <-- FIX 2: Added SYSTEM to suppress external warnings
 
+# -- FREETYPE (Added via git clone/submodule) -----------------------
+# Prevent building documentation or developer tests inside your engine
+set(FT_DISABLE_HARFBUZZ ON CACHE BOOL "" FORCE) # Disables heavy dependency if not needed
+set(FT_DISABLE_BZIP2    ON CACHE BOOL "" FORCE)
+set(FT_DISABLE_PNG      ON CACHE BOOL "" FORCE)
+set(FT_DISABLE_ZLIB     ON CACHE BOOL "" FORCE)
+
+# Assuming you cloned it into external/freetype
+add_subdirectory(external/freetype SYSTEM)
+
 # -- GLAD -----------------------------------------------------------
 add_library(glad STATIC external/src/gl.c)
 target_include_directories(glad PUBLIC
@@ -70,10 +80,23 @@ add_executable(${PROJECT_NAME}
         include/util/colorutils.h
         src/entity/player_entity.c
         include/entity/player_entity.h
+        include/entity/living_entity.h
+        src/entity/living_entity.c
+        include/render/model/skeleton.h
+        src/render/model/skeleton.c
+        src/render/model/skeleton_loader.c
+        include/render/model/skeleton_loader.h
+        include/render/gui/tesselator.h
+        src/render/gui/tesselator.c
+        src/render/gui/gui_renderer.c
+        include/render/gui/gui_renderer.h
+        include/render/gui/font/font_renderer.h
+        src/render/gui/font/font_renderer.c
 )
 
 # Use target_include_directories to tell your app where Assimp headers are
 target_include_directories(${PROJECT_NAME} PRIVATE
+        external/freetype/include
         external/assimp/include
         external/assimp/build/include # Assimp generates some headers here
         external/assimp/contrib/unzip
@@ -84,7 +107,8 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 target_link_libraries(${PROJECT_NAME} PRIVATE
         glad
         glfw
-        assimp  # <--- Link the library here
+        assimp
+        freetype
 )
 
 if(NOT WIN32)

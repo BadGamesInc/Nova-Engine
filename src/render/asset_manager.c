@@ -26,8 +26,10 @@ LoadedModel * gp_women         = NULL;
  */
 void init_asset_manager (void)
 {
-    gp_textures = create_arraylist(16, STRUCT_COMPARE_FUNC(ModelTexture, texture_id));
-    gp_models   = create_arraylist(16, STRUCT_COMPARE_FUNC(LoadedModel, asset_id));
+    gp_textures
+        = create_arraylist(16, STRUCT_COMPARE_FUNC(ModelTexture, texture_id));
+    gp_models
+        = create_arraylist(16, STRUCT_COMPARE_FUNC(LoadedModel, asset_id));
 
     load_textures();
     load_models();
@@ -38,7 +40,6 @@ void init_asset_manager (void)
  */
 void load_textures (void)
 {
-
 }
 
 void add_model (LoadedModel * p_model, unsigned int * p_asset_counter)
@@ -57,16 +58,20 @@ void load_models (void)
     gp_dragon = load_model_from_obj("dragon", "dragon.obj", asset_counter);
     add_model(gp_dragon, &asset_counter);
 
-    gp_grass_fan = load_model_from_obj("grass", "grassModel.obj", asset_counter);
+    gp_grass_fan
+        = load_model_from_obj("grass", "grassModel.obj", asset_counter);
     add_model(gp_grass_fan, &asset_counter);
 
     gp_fern = load_model_from_obj("fern", "fern.obj", asset_counter);
+    gp_fern->p_meshes[0].p_texture->num_rows = 2;
     add_model(gp_fern, &asset_counter);
 
-    gp_low_poly_tree = load_model_from_obj("lowPolyTree", "lowPolyTree.obj", asset_counter);
+    gp_low_poly_tree
+        = load_model_from_obj("lowPolyTree", "lowPolyTree.obj", asset_counter);
     add_model(gp_low_poly_tree, &asset_counter);
 
-    gp_women = load_model_from_obj("stylized_paladin_obj", "Stylized_Paladin_Clean.obj", asset_counter);
+    gp_women
+        = load_model_from_obj("paladin", "WORKING_FEMALE.fbx", asset_counter);
     add_model(gp_women, &asset_counter);
 }
 

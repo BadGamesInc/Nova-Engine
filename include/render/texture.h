@@ -11,6 +11,7 @@ typedef struct
 {
     int          width;
     int          height;
+    int          num_rows;
     unsigned int texture_id;
 } Texture;
 
@@ -24,6 +25,7 @@ typedef struct
 
 Texture * create_texture(const char * p_texture_file_name);
 Texture * create_texture_from_path(const char * p_absolute_path);
+Texture * load_texture_from_memory(unsigned char * p_data, int size);
 void      destroy_texture(Texture * p_texture);
 void      bind_texture(const Texture * p_texture, unsigned int texture_unit);
 void      unbind_texture(void);

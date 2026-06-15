@@ -14,19 +14,19 @@ static double * gp_mouse_y       = NULL;
 static double   g_mouse_scroll_x = 0.0;
 static double   g_mouse_scroll_y = 0.0;
 
-bool is_key_pressed(const int key)
+bool is_key_pressed (const int key)
 {
     return glfwGetKey(get_window_handle(), key) == GLFW_PRESS;
 }
 
-bool is_mouse_button_pressed(const int button)
+bool is_mouse_button_pressed (const int button)
 {
     return glfwGetMouseButton(get_window_handle(), button) == GLFW_PRESS;
 }
 
 // Update the current cursor positions
 //
-void update_cursor_pos(void)
+void update_cursor_pos (void)
 {
     if (gp_mouse_x == NULL || gp_mouse_y == NULL)
     {
@@ -50,7 +50,7 @@ void update_cursor_pos(void)
     glfwGetCursorPos(get_window_handle(), gp_mouse_x, gp_mouse_y);
 }
 
-void update_mouse_scroll(double xoffset, double yoffset)
+void update_mouse_scroll (double xoffset, double yoffset)
 {
     g_mouse_scroll_x = xoffset;
     g_mouse_scroll_y = yoffset;
@@ -58,7 +58,7 @@ void update_mouse_scroll(double xoffset, double yoffset)
 
 // Return the x coordinate of the cursor
 //
-double get_mouse_x(void)
+double get_mouse_x (void)
 {
     if (gp_mouse_x == NULL)
     {
@@ -70,7 +70,7 @@ double get_mouse_x(void)
 
 // Return the y coordinate of the cursor
 //
-double get_mouse_y(void)
+double get_mouse_y (void)
 {
     if (gp_mouse_y == NULL)
     {
@@ -80,19 +80,19 @@ double get_mouse_y(void)
     return *gp_mouse_y;
 }
 
-double get_mouse_scroll_x(void)
+double get_mouse_scroll_x (void)
 {
     return g_mouse_scroll_x;
 }
 
-double get_mouse_scroll_y(void)
+double get_mouse_scroll_y (void)
 {
     return g_mouse_scroll_y;
 }
 
 // Free allocated memory for mouse positions
 //
-void input_cleanup(void)
+void input_cleanup (void)
 {
     free(gp_mouse_x);
     free(gp_mouse_y);

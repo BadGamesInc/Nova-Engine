@@ -19,7 +19,7 @@
 // Global variables
 //
 static HashMap *       gp_batched_entities = NULL;
-static ArrayList *     gp_terrains         = NULL;
+static ArrayList *     gp_terrain_list     = NULL;
 static EntityShader *  gp_entity_shader    = NULL;
 static TerrainShader * gp_terrain_shader   = NULL;
 static mat4            g_projection_mat    = { { 0.0f } };
@@ -30,9 +30,9 @@ void renderer_init (void)
 
     // Initialize globals
     //
-    gp_batched_entities       = create_hashmap(
+    gp_batched_entities = create_hashmap(
         16, int_hash, container_int_compare, container_int_compare);
-    gp_terrains       = create_arraylist(16, STRUCT_COMPARE_FUNC(Terrain, id));
+    gp_terrain_list   = create_arraylist(16, STRUCT_COMPARE_FUNC(Terrain, id));
     gp_entity_shader  = create_entity_shader();
     gp_terrain_shader = create_terrain_shader();
 
@@ -108,7 +108,7 @@ void free_entity_list_loop (void * p_value)
 
 void process_terrain (Terrain * p_terrain)
 {
-    arraylist_add(gp_terrains, p_terrain);
+    arraylist_add(gp_terrain_list, p_terrain);
 }
 
 /**
@@ -128,24 +128,25 @@ void renderer_render_main (Camera * p_camera, const Light * p_light)
     //
     bind_shader((Shader *)gp_entity_shader);
     entity_shader_load_light(gp_entity_shader, p_light);
-    entity_shader_load_fog_values(gp_entity_shader, FOG_DENSITY, FOG_GRADIENT, SKY_COLOR);
+    entity_shader_load_fog_values(
+        gp_entity_shader, FOG_DENSITY, FOG_GRADIENT, SKY_COLOR);
     shader_uniform_mat4((Shader *)gp_entity_shader, "view", view);
     batch_render_entity(gp_batched_entities);
     unbind_shader();
-
 
     // Terrain rendering
     //
     bind_shader((Shader *)gp_terrain_shader);
     terrain_shader_load_light(gp_terrain_shader, p_light);
-    terrain_shader_load_fog_values(gp_terrain_shader, FOG_DENSITY, FOG_GRADIENT, SKY_COLOR);
+    terrain_shader_load_fog_values(
+        gp_terrain_shader, FOG_DENSITY, FOG_GRADIENT, SKY_COLOR);
     shader_uniform_mat4((Shader *)gp_terrain_shader, "view", view);
-    render_terrains(gp_terrains);
+    render_terrains(gp_terrain_list);
     unbind_shader();
 
     // Clear the containers to repopulate on the next frame
     hashmap_clear(gp_batched_entities, NULL, free_entity_list_loop);
-    arraylist_clear(gp_terrains, NULL);
+    arraylist_clear(gp_terrain_list, NULL);
 }
 
 void free_entity_list_clean (void * p_value)

@@ -12,14 +12,24 @@
 
 #define LOD_BIAS (-0.5)
 
-static Texture * upload_texture(unsigned char * p_data, int width, int height, int nr_channels)
+static Texture * upload_texture (unsigned char * p_data,
+                                 int             width,
+                                 int             height,
+                                 int             nr_channels)
 {
     int format = 0;
 
-    switch (nr_channels) {
-        case 1: format = GL_RED;  break;
-        case 3: format = GL_RGB;  break;
-        case 4: format = GL_RGBA; break;
+    switch (nr_channels)
+    {
+        case 1:
+            format = GL_RED;
+            break;
+        case 3:
+            format = GL_RGB;
+            break;
+        case 4:
+            format = GL_RGBA;
+            break;
         default:
             nova_error("Unsupported channel count: %d", nr_channels);
             stbi_image_free(p_data);
@@ -36,8 +46,10 @@ static Texture * upload_texture(unsigned char * p_data, int width, int height, i
     //
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(
+        GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(
+        GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR_MIPMAP_LINEAR);
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_LOD_BIAS, LOD_BIAS);
 
     glTexImage2D(GL_TEXTURE_2D,
@@ -67,6 +79,7 @@ static Texture * upload_texture(unsigned char * p_data, int width, int height, i
     p_texture->texture_id = texture_id;
     p_texture->width      = width;
     p_texture->height     = height;
+    p_texture->num_rows   = 1;
 
     return p_texture;
 }
@@ -99,11 +112,12 @@ Texture * create_texture (const char * p_texture_file_name)
 }
 
 /**
- * Creates a 2D texture with the specified width and height from an absolute path
+ * Creates a 2D texture with the specified width and height from an absolute
+ * path
  * @param p_absolute_path The absolute path of the image
  * @return The pointer to the newly created texture struct
  */
-Texture * create_texture_from_path(const char * p_absolute_path)
+Texture * create_texture_from_path (const char * p_absolute_path)
 {
     // Load texture file using STB
     //
@@ -120,6 +134,24 @@ Texture * create_texture_from_path(const char * p_absolute_path)
     }
 
     return upload_texture(p_data, width, height, nr_channels);
+}
+
+Texture * load_texture_from_memory (unsigned char * p_data, int size)
+{
+    int             width       = 0;
+    int             height      = 0;
+    int             nr_channels = 0;
+    unsigned char * p_pixels
+        = stbi_load_from_memory(p_data, size, &width, &height, &nr_channels, 0);
+
+    if (p_pixels == NULL)
+    {
+        nova_error("Failed to decode embedded texture: %s",
+                   stbi_failure_reason());
+        return NULL;
+    }
+
+    return upload_texture(p_pixels, width, height, nr_channels);
 }
 
 // Free the resources taken by the texture
@@ -152,7 +184,7 @@ void unbind_texture (void)
  * @param p_image_file_name The file name of the image
  * @return A pointer to the Image
  */
-Image * load_image(const char * p_image_file_name)
+Image * load_image (const char * p_image_file_name)
 {
     Image * p_image = malloc(sizeof(*p_image));
 
@@ -162,9 +194,9 @@ Image * load_image(const char * p_image_file_name)
         return NULL;
     }
 
-    int width    = 0;
-    int height   = 0;
-    int channels = 0;
+    int          width    = 0;
+    int          height   = 0;
+    int          channels = 0;
     const char * p_image_file_path
         = get_resource_location("textures", p_image_file_name);
     p_image->data = stbi_load(p_image_file_path, &width, &height, &channels, 0);
@@ -187,20 +219,21 @@ Image * load_image(const char * p_image_file_name)
  * Free the image and its data
  * @param p_image The image to free
  */
-void destroy_image(Image * p_image)
+void destroy_image (Image * p_image)
 {
     stbi_image_free(p_image->data);
     free(p_image);
 }
 
 /**
- * Get the rgb value of a specific coordinate in the provided image and store it in a vec3
+ * Get the rgb value of a specific coordinate in the provided image and store it
+ * in a vec3
  * @param p_image The image to read from
  * @param dest The vec3 to store the rgba in
  * @param x The x coordinate to read
  * @param y The y coordinate to read
  */
-void image_get_rgb(const Image * p_image, vec3 dest, const int x, const int y)
+void image_get_rgb (const Image * p_image, vec3 dest, const int x, const int y)
 {
     if (p_image->channels != 3)
     {
@@ -208,7 +241,7 @@ void image_get_rgb(const Image * p_image, vec3 dest, const int x, const int y)
         return;
     }
 
-    const size_t index = (size_t) p_image->channels * (y * p_image->width + x);
+    const size_t index = (size_t)p_image->channels * (y * p_image->width + x);
 
     dest[0] = p_image->data[index];     // Red
     dest[1] = p_image->data[index + 1]; // Green
@@ -216,13 +249,14 @@ void image_get_rgb(const Image * p_image, vec3 dest, const int x, const int y)
 }
 
 /**
- * Get the rgba value of a specific coordinate in the provided image and store it in a vec4
+ * Get the rgba value of a specific coordinate in the provided image and store
+ * it in a vec4
  * @param p_image The image to read from
  * @param dest The vec4 to store the rgba in
  * @param x The x coordinate to read
  * @param y The y coordinate to read
  */
-void image_get_rgba(const Image * p_image, vec4 dest, const int x, const int y)
+void image_get_rgba (const Image * p_image, vec4 dest, const int x, const int y)
 {
     if (p_image->channels != 4)
     {
@@ -230,7 +264,7 @@ void image_get_rgba(const Image * p_image, vec4 dest, const int x, const int y)
         return;
     }
 
-    const size_t index = (size_t) p_image->channels * (y * p_image->width + x);
+    const size_t index = (size_t)p_image->channels * (y * p_image->width + x);
 
     dest[0] = p_image->data[index];     // Red
     dest[1] = p_image->data[index + 1]; // Green
